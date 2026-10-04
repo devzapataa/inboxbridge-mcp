@@ -7,6 +7,7 @@
   <img src="https://img.shields.io/badge/python-3.14-3776AB?logo=python&logoColor=white" alt="Python 3.14">
   <img src="https://img.shields.io/badge/MCP-servidor%20remoto-C2410C" alt="Servidor MCP remoto">
   <img src="https://img.shields.io/badge/OAuth-2.1%20%2B%20PKCE-1B1A17" alt="OAuth 2.1 + PKCE">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licencia-MIT-6B665C" alt="Licencia MIT"></a>
 </p>
 
 # Inboxbridge
@@ -116,4 +117,4 @@ En claude.ai → *Configuración → Conectores → Agregar conector personaliza
 
 ---
 
-Hecho por [Yonier Zapata](https://github.com/devzapataa).
+Hecho por [Yonier Zapata](https://github.com/devzapataa) · [Licencia MIT](LICENSE)

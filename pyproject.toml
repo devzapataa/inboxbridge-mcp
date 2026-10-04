@@ -3,6 +3,8 @@ name = "inboxbridge-mcp"
 version = "0.1.0"
 description = "Servidor MCP remoto que le da a Claude acceso a varias cuentas de Gmail"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Yonier Zapata Asprilla" }]
 requires-python = ">=3.14"
 dependencies = [
