@@ -20,11 +20,21 @@ class Settings(BaseSettings):
     zona_horaria: str = "America/Bogota"
     # Solo para desarrollo local: deja /mcp sin OAuth.
     auth_enabled: bool = True
+    # Canal de avisos (opcional): webhook que recibe {"mensaje": ...}. El destinatario lo
+    # define quien recibe el webhook (n8n), nunca Claude. Sin URL, enviar_aviso no existe.
+    avisos_webhook_url: str | None = None
+    avisos_webhook_token: SecretStr | None = None
+    avisos_max_diarios: int = Field(default=12, ge=1, le=100)
 
     @field_validator("base_url")
     @classmethod
     def _sin_barra_final(cls, valor: str) -> str:
         return valor.rstrip("/")
+
+    @field_validator("avisos_webhook_url", "avisos_webhook_token", mode="before")
+    @classmethod
+    def _vacio_es_none(cls, valor: object) -> object:
+        return None if valor == "" else valor
 
     @model_validator(mode="after")
     def _validar(self) -> Self:
@@ -32,6 +42,11 @@ class Settings(BaseSettings):
             raise ValueError("OWNER_EMAILS no puede estar vacío")
         if not self.auth_enabled and self.es_https:
             raise ValueError("AUTH_ENABLED=false solo se permite en local (BASE_URL http)")
+        if self.avisos_webhook_url is not None:
+            if not self.avisos_webhook_url.startswith("https://"):
+                raise ValueError("AVISOS_WEBHOOK_URL debe ser https")
+            if self.avisos_webhook_token is None:
+                raise ValueError("AVISOS_WEBHOOK_TOKEN es obligatorio si hay AVISOS_WEBHOOK_URL")
         return self
 
     @property
@@ -41,6 +56,10 @@ class Settings(BaseSettings):
     @property
     def es_https(self) -> bool:
         return self.base_url.startswith("https://")
+
+    @property
+    def avisos_activos(self) -> bool:
+        return self.avisos_webhook_url is not None
 
     @property
     def google_redirect_uri(self) -> str:

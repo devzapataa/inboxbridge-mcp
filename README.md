@@ -29,10 +29,12 @@ Hay dos capas de OAuth:
 | `leer_hilo` | Hilo completo en texto (convierte el HTML), con remitentes, fechas y adjuntos. |
 | `crear_borrador` | Borrador nuevo o respuesta dentro de un hilo (`In-Reply-To` / `References`). |
 | `conectar_cuenta` | Enlace para conectar otra cuenta o reconectar una revocada. |
+| `enviar_aviso` | Aviso al dueño por un canal fijo (por ejemplo, WhatsApp vía n8n). Solo existe si hay `AVISOS_WEBHOOK_URL`. |
 
 ## Decisiones de seguridad
 
 - **No hay herramientas para enviar, reenviar ni borrar.** Un correo malicioso puede intentar que el modelo saque datos (prompt injection). Con solo borradores, quien envía siempre es una persona desde Gmail. Una prueba lo verifica.
+- **La única salida, `enviar_aviso`, solo puede escribirle al dueño.** Claude decide el texto, pero no el destino: la URL del webhook está en el `.env` y el destinatario lo fija el workflow que la recibe. Además tiene un límite diario (`AVISOS_MAX_DIARIOS`) y quita los caracteres de control. Por eso las rutinas de correo no necesitan acceso a n8n: si lo tuvieran, un correo podría pedirles ejecutar cualquier otro workflow.
 - **Tokens cifrados con AES-256-GCM, con el email de la cuenta como dato asociado:** un token no se descifra si lo mueven a otra fila. Las llaves se derivan con HKDF desde un único `MASTER_KEY` (una por propósito).
 - **Lista cerrada de dueños** en las dos capas, aunque Google valide a cualquiera.
 - **URLs de regreso permitidas** solo las de claude.ai y loopback (Claude Code). Los trucos tipo `localhost@evil.com` se rechazan.
@@ -59,7 +61,7 @@ Python 3.14 · FastMCP 4 · Starlette · asyncpg · httpx · Pydantic · cryptog
 docker compose -f compose.dev.yml up -d   # Postgres local en el puerto 5433
 cp .env.example .env                      # y llénalo
 uv run inboxbridge                         # http://localhost:8000
-uv run pytest                             # 35 pruebas: unidades, herramientas MCP y flujo web
+uv run pytest                             # 44 pruebas: unidades, herramientas MCP, avisos y flujo web
 ```
 
 ## Despliegue (VPS)

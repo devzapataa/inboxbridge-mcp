@@ -5,6 +5,7 @@ import logging
 import asyncpg
 import httpx
 
+from inboxbridge.avisos import Avisador
 from inboxbridge.config import Settings
 from inboxbridge.crypto import Cifrador, derivar_llave
 from inboxbridge.cuentas import RepoCuentas
@@ -21,6 +22,7 @@ class Estado:
     cuentas: RepoCuentas
     google: ClienteGoogle
     gmail: Gmail
+    avisador: Avisador | None = None
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -41,6 +43,15 @@ class Estado:
             redirect_uri=s.google_redirect_uri,
         )
         self.gmail = Gmail(self.http, self.google, self.cuentas, s.zona_horaria)
+        if s.avisos_webhook_url and s.avisos_webhook_token:
+            cuentas = self.cuentas
+            self.avisador = Avisador(
+                self.http,
+                url=s.avisos_webhook_url,
+                token=s.avisos_webhook_token.get_secret_value(),
+                max_diarios=s.avisos_max_diarios,
+                contar_enviados=lambda: cuentas.contar_llamadas_ok("enviar_aviso", 24),
+            )
 
     async def cerrar(self) -> None:
         await self.http.aclose()
