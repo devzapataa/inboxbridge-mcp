@@ -1,0 +1,25 @@
+# Producción en el VPS, detrás del Traefik compartido (corre en la red del host).
+# Despliegue: ./scripts/desplegar.sh
+services:
+  app:
+    build: .
+    image: inboxbridge-mcp:latest
+    restart: unless-stopped
+    env_file: .env
+    networks: [default, postgres]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 300m
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: inboxbridge-mcp_default
+      traefik.http.routers.inboxbridge.rule: Host(`correo-mcp.konto.org.in`)
+      traefik.http.routers.inboxbridge.entrypoints: websecure
+      traefik.http.routers.inboxbridge.tls.certresolver: letsencrypt
+      traefik.http.services.inboxbridge.loadbalancer.server.port: "8000"
+
+networks:
+  postgres:
+    external: true
+    name: postgresql-cctw_default

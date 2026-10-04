@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  calidad:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: inboxbridge
+          POSTGRES_PASSWORD: inboxbridge
+          POSTGRES_DB: inboxbridge
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U inboxbridge -d inboxbridge"
+          --health-interval 2s --health-retries 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - name: Formato
+        run: uv run ruff format --check .
+      - name: Lint (incluye reglas de seguridad de bandit)
+        run: uv run ruff check .
+      - name: Tipos
+        run: uv run pyright
+      - name: Pruebas
+        run: uv run pytest -q
+
+  imagen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -t inboxbridge-mcp:ci .

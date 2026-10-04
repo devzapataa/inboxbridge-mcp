@@ -1,0 +1,14 @@
+# Postgres para desarrollo y pruebas locales: docker compose -f compose.dev.yml up -d
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: inboxbridge
+      POSTGRES_PASSWORD: inboxbridge
+      POSTGRES_DB: inboxbridge
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inboxbridge -d inboxbridge"]
+      interval: 2s
+      retries: 15

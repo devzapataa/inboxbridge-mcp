@@ -1,0 +1,56 @@
+[project]
+name = "inboxbridge-mcp"
+version = "0.1.0"
+description = "Servidor MCP remoto que le da a Claude acceso a varias cuentas de Gmail"
+readme = "README.md"
+authors = [{ name = "Yonier Zapata Asprilla" }]
+requires-python = ">=3.14"
+dependencies = [
+    "asyncpg>=0.31.0",
+    "cryptography>=50.0.2",
+    "fastmcp>=4.0.10",
+    "httpx>=0.28.1",
+    "itsdangerous>=2.2.0",
+    "pydantic-settings>=2.15.0",
+]
+
+[project.scripts]
+inboxbridge = "inboxbridge.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "inboxbridge"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "respx>=0.23.1",
+    "ruff>=0.16.10",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]
+# Lo único interpolado es la lista fija de columnas; los valores siempre van como $1, $2...
+"src/inboxbridge/cuentas.py" = ["S608"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+
+[tool.pyright]
+include = ["src"]
+typeCheckingMode = "standard"
