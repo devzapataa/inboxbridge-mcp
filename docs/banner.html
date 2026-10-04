@@ -1,0 +1,62 @@
+<!doctype html>
+<!-- Fuente de docs/banner.png: 1280×640, exportado a 2x (2560×1280). Datos ficticios. -->
+<html lang="es"><head><meta charset="utf-8">
+<link crossorigin="anonymous" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter+Tight:wght@400;500;600&display=block" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1280px;height:640px;overflow:hidden}
+  body{font-family:'Inter Tight',sans-serif;color:#1B1A17;background:#F5F1EA;position:relative}
+  body:before{content:"";position:absolute;inset:0;
+    background-image:radial-gradient(#1B1A1712 1px,transparent 1px);background-size:22px 22px}
+  .head{position:absolute;left:80px;top:50px}
+  .eyebrow{font-size:15px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#C2410C}
+  h1{font-family:'Fraunces',serif;font-weight:800;font-size:84px;letter-spacing:-.03em;line-height:1;margin-top:10px}
+  .sub{font-size:25px;color:#4A463F;margin-top:14px}
+  .inbox{position:absolute;left:80px;width:300px;height:62px;border-radius:14px;background:#FFFDF9;
+    border:1.5px solid #1B1A17;display:flex;align-items:center;gap:14px;padding:0 16px;box-shadow:4px 4px 0 #1B1A17}
+  .inbox .ic{width:34px;height:26px;border:2px solid #1B1A17;border-radius:4px;position:relative;background:#FDE7D8}
+  .inbox .ic:after{content:"";position:absolute;left:3px;right:3px;top:2px;height:12px;border:2px solid #1B1A17;border-top:0;border-left-color:transparent;border-right-color:transparent;
+    border-bottom:0;background:linear-gradient(to bottom right,transparent 48%,#1B1A17 49%,#1B1A17 54%,transparent 55%),linear-gradient(to bottom left,transparent 48%,#1B1A17 49%,#1B1A17 54%,transparent 55%)}
+  .inbox b{font-size:19px}.inbox small{display:block;font-size:14px;color:#6B665C}
+  .n{margin-left:auto;font-size:14px;font-weight:600;background:#1B1A17;color:#F5F1EA;border-radius:999px;padding:3px 10px}
+  svg{position:absolute;left:0;top:0}
+  .claude{position:absolute;right:80px;top:250px;width:420px;border-radius:20px;background:#1B1A17;color:#F5F1EA;padding:24px 26px;
+    box-shadow:8px 8px 0 #C2410C}
+  .claude .q{font-size:17px;color:#BDB6A8;margin-bottom:12px}
+  .claude .a{font-size:19px;line-height:1.5}
+  .claude .a b{color:#FDBA74}
+  .lbl{position:absolute;right:80px;top:210px;font-size:15px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#6B665C}
+  .foot{position:absolute;left:80px;bottom:36px;font-size:16px;color:#6B665C;letter-spacing:.02em}
+  .foot b{color:#1B1A17}
+</style></head><body>
+  <div class="head">
+    <div class="eyebrow">Servidor MCP para Claude</div>
+    <h1>Inboxbridge</h1>
+    <div class="sub">Un puente entre todas tus bandejas de Gmail y Claude.</div>
+  </div>
+
+  <div class="inbox" style="top:262px"><div class="ic"></div><div><b>personal</b><small>ana@gmail.com</small></div><span class="n">12</span></div>
+  <div class="inbox" style="top:336px"><div class="ic"></div><div><b>trabajo</b><small>ana@empresa.co</small></div><span class="n">7</span></div>
+  <div class="inbox" style="top:410px"><div class="ic"></div><div><b>negocio</b><small>hola@tienda.co</small></div><span class="n">3</span></div>
+  <div class="inbox" style="top:484px"><div class="ic"></div><div><b>estudio</b><small>ana@uni.edu.co</small></div><span class="n">1</span></div>
+
+  <svg width="1280" height="640" viewBox="0 0 1280 640" fill="none">
+    <g stroke="#1B1A17" stroke-width="2" stroke-dasharray="2 7" stroke-linecap="round">
+      <path d="M388 293 C 560 293, 560 345, 772 345"/>
+      <path d="M388 367 C 560 367, 600 360, 772 360"/>
+      <path d="M388 441 C 560 441, 620 375, 772 375"/>
+      <path d="M388 515 C 560 515, 640 390, 772 390"/>
+    </g>
+    <path d="M560 300 Q 640 230 720 300" stroke="#C2410C" stroke-width="3"/>
+    <g stroke="#C2410C" stroke-width="2"><path d="M580 283 V300"/><path d="M600 270 V300"/><path d="M620 262 V300"/><path d="M640 259 V300"/><path d="M660 262 V300"/><path d="M680 270 V300"/><path d="M700 283 V300"/></g>
+    <path d="M552 300 H728" stroke="#C2410C" stroke-width="3"/>
+    <circle cx="772" cy="367" r="7" fill="#C2410C"/>
+  </svg>
+
+  <div class="lbl">Claude</div>
+  <div class="claude">
+    <div class="q">¿Qué tengo pendiente esta semana?</div>
+    <div class="a">En tus 4 cuentas hay <b>2 plazos</b>: la prueba técnica de Acme vence <b>mañana 11:59 pm</b> y la entrevista con Globex está por agendar.</div>
+  </div>
+  <div class="foot"><b>Multi-cuenta</b> · OAuth 2.1 · solo lectura y borradores · avisos por WhatsApp</div>
+</body></html>

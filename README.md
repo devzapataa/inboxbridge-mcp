@@ -1,43 +1,73 @@
-# inboxbridge-mcp
+<p align="center">
+  <img src="docs/banner.png" alt="Inboxbridge: un puente entre todas tus bandejas de Gmail y Claude" width="100%">
+</p>
 
-Servidor [MCP](https://modelcontextprotocol.io) remoto que le da a Claude acceso a **varias cuentas de Gmail** a la vez. El conector oficial solo admite una cuenta.
+<p align="center">
+  <a href="https://github.com/devzapataa/inboxbridge-mcp/actions/workflows/ci.yml"><img src="https://github.com/devzapataa/inboxbridge-mcp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/python-3.14-3776AB?logo=python&logoColor=white" alt="Python 3.14">
+  <img src="https://img.shields.io/badge/MCP-servidor%20remoto-C2410C" alt="Servidor MCP remoto">
+  <img src="https://img.shields.io/badge/OAuth-2.1%20%2B%20PKCE-1B1A17" alt="OAuth 2.1 + PKCE">
+</p>
 
-Se agrega en claude.ai como conector personalizado (`https://correo-mcp.konto.org.in/mcp`) y queda disponible en la web, la app de escritorio, el celular y Claude Code.
+# Inboxbridge
 
-## Arquitectura
+**Un servidor [MCP](https://modelcontextprotocol.io) remoto que conecta Claude con todas tus cuentas de Gmail a la vez, y te avisa por WhatsApp cuando algo importante tiene plazo.**
+
+El conector oficial de Gmail en Claude admite una sola cuenta. Si tus correos importantes llegan a varias (la personal, la del trabajo, la de un negocio), lo que pasa en las demás no lo ves a tiempo: una prueba técnica con fecha límite, una entrevista por agendar, una factura que vence. Inboxbridge las une detrás de un solo conector. Le preguntas a Claude una vez y busca en todas.
+
+## Qué puedes hacer
+
+Con el conector agregado en Claude (web, escritorio, celular o Claude Code), puedes pedirle cosas como estas:
+
+- *"¿Qué correos sin leer tengo hoy en todas mis cuentas?"*
+- *"¿Tengo algún plazo esta semana? Revisa procesos de empleo y trámites."*
+- *"Resume el hilo con Acme y déjame un borrador de respuesta."*
+
+Y sin que tengas que preguntar, dos [rutinas programadas de Claude](https://claude.ai/code/routines) usan el mismo conector:
+
+| Hora | Qué hace | Te avisa |
+|---|---|---|
+| **7:00 am** | Revisa todas las cuentas y busca plazos de los últimos 21 días (pruebas técnicas, entrevistas, citaciones, pagos), aunque esos correos ya estén leídos. | Siempre, por push y por WhatsApp. Así sabes que la revisión corrió. |
+| **2:00 pm** | Una pasada corta: solo lo que vence hoy o mañana y sigue sin atender. | Solo si hay algo urgente. |
+
+## Cómo funciona
 
 ```mermaid
 flowchart LR
-    C["Claude<br/>(web · móvil · Code)"] -- "OAuth 2.1 + PKCE<br/>(CIMD / DCR)" --> S["inboxbridge<br/>FastMCP · Starlette"]
-    S -- "refresh token por cuenta<br/>(cifrado AES-256-GCM)" --> G["Gmail API<br/>cuenta A, cuenta B, …"]
-    S --- P[("PostgreSQL<br/>cuentas · auditoría<br/>estado OAuth")]
+    C["Claude<br/>chat · rutinas 7 am / 2 pm"] -- "OAuth 2.1 + PKCE<br/>(CIMD / DCR)" --> S["Inboxbridge<br/>FastMCP · Starlette"]
+    S -- "un refresh token por cuenta<br/>(AES-256-GCM)" --> G["Gmail API<br/>personal · trabajo · …"]
+    S --- P[("PostgreSQL<br/>cuentas · auditoría · estado OAuth")]
+    S -- "enviar_aviso<br/>webhook fijo" --> N["n8n"]
+    N --> W["WhatsApp<br/>(Evolution API)"]
 ```
 
 Hay dos capas de OAuth:
 
 | Capa | Entre | Qué hace |
 |---|---|---|
-| A | Claude → servidor | FastMCP hace de servidor de autorización: metadatos RFC 9728/8414, CIMD y DCR, PKCE S256 y rotación de tokens. Para identificarte usa Google, y solo pasan los correos de `OWNER_EMAILS`. |
-| B | Servidor → Google | Cada cuenta de Gmail se conecta en `/cuentas` y deja un refresh token cifrado. El access token se guarda en memoria y se renueva con un candado por cuenta. |
+| A | Claude → Inboxbridge | FastMCP hace de servidor de autorización: metadatos RFC 9728/8414, CIMD y DCR, PKCE S256 y rotación de tokens. Para identificarte usa Google, y solo pasan los correos de `OWNER_EMAILS`. |
+| B | Inboxbridge → Google | Cada cuenta de Gmail se conecta en `/cuentas` y deja un refresh token cifrado. El access token se guarda en memoria y se renueva con un candado por cuenta. |
 
 ## Herramientas
 
 | Herramienta | Qué hace |
 |---|---|
 | `listar_cuentas` | Cuentas conectadas, con alias y estado. |
-| `buscar_correos` | Busca con la sintaxis de Gmail en una cuenta o en todas en paralelo, y ordena por fecha. |
+| `buscar_correos` | Busca con la sintaxis de Gmail en una cuenta o en todas en paralelo, y ordena por fecha. Si una cuenta falla, las demás responden igual. |
 | `leer_hilo` | Hilo completo en texto (convierte el HTML), con remitentes, fechas y adjuntos. |
-| `crear_borrador` | Borrador nuevo o respuesta dentro de un hilo (`In-Reply-To` / `References`). |
+| `crear_borrador` | Borrador nuevo o respuesta dentro de un hilo (`In-Reply-To` / `References`). Nunca envía. |
 | `conectar_cuenta` | Enlace para conectar otra cuenta o reconectar una revocada. |
 | `enviar_aviso` | Aviso al dueño por un canal fijo (por ejemplo, WhatsApp vía n8n). Solo existe si hay `AVISOS_WEBHOOK_URL`. |
 
 ## Decisiones de seguridad
 
+Un servidor con acceso a varios buzones es un blanco atractivo, y los correos los escriben terceros. El diseño parte de ahí:
+
 - **No hay herramientas para enviar, reenviar ni borrar.** Un correo malicioso puede intentar que el modelo saque datos (prompt injection). Con solo borradores, quien envía siempre es una persona desde Gmail. Una prueba lo verifica.
-- **La única salida, `enviar_aviso`, solo puede escribirle al dueño.** Claude decide el texto, pero no el destino: la URL del webhook está en el `.env` y el destinatario lo fija el workflow que la recibe. Además tiene un límite diario (`AVISOS_MAX_DIARIOS`) y quita los caracteres de control. Por eso las rutinas de correo no necesitan acceso a n8n: si lo tuvieran, un correo podría pedirles ejecutar cualquier otro workflow.
+- **La única salida, `enviar_aviso`, solo puede escribirle al dueño.** Claude decide el texto, pero no el destino: la URL del webhook está en el `.env` y el destinatario lo fija el workflow que la recibe. Además tiene un límite diario (`AVISOS_MAX_DIARIOS`) y quita los caracteres de control. Por eso las rutinas no necesitan acceso a n8n: si lo tuvieran, un correo podría pedirles ejecutar cualquier otro workflow.
 - **Tokens cifrados con AES-256-GCM, con el email de la cuenta como dato asociado:** un token no se descifra si lo mueven a otra fila. Las llaves se derivan con HKDF desde un único `MASTER_KEY` (una por propósito).
-- **Lista cerrada de dueños** en las dos capas, aunque Google valide a cualquiera.
-- **URLs de regreso permitidas** solo las de claude.ai y loopback (Claude Code). Los trucos tipo `localhost@evil.com` se rechazan.
+- **Lista cerrada de dueños** en las dos capas de OAuth, aunque Google valide a cualquiera.
+- **URLs de regreso permitidas:** solo las de claude.ai y loopback (Claude Code). Los trucos tipo `localhost@evil.com` se rechazan.
 - **Los ids de Gmail se validan** antes de armar rutas, para que un id fabricado no llegue a otro endpoint.
 - **Páginas web** con cookie firmada (`secure`, `httponly`, `samesite=lax`), CSRF, CSP estricta y PKCE también hacia Google.
 - **Auditoría** solo de metadatos (herramienta, cuenta, resultado y duración). Nunca guarda consultas ni contenido.
@@ -47,29 +77,43 @@ Hay dos capas de OAuth:
 
 Python 3.14 · FastMCP 4 · Starlette · asyncpg · httpx · Pydantic · cryptography · uv · pytest + respx · ruff · pyright · Docker · Traefik · GitHub Actions
 
-## Configuración de Google Cloud
+## Puesta en marcha
+
+### 1. Google Cloud
 
 1. **Cliente OAuth** de tipo *Aplicación web*, con estas URIs de redirección:
-   - `https://correo-mcp.konto.org.in/auth/callback`: entrar cuando Claude se conecta.
-   - `https://correo-mcp.konto.org.in/google/callback`: conectar cuentas de Gmail.
+   - `https://tu-dominio/auth/callback`: para entrar cuando Claude se conecta.
+   - `https://tu-dominio/google/callback`: para conectar cuentas de Gmail.
 2. **Acceso a datos:** `openid`, `email`, `gmail.readonly` y `gmail.compose`.
 3. **Publicación:** estado *En producción*. En *Prueba* los refresh tokens vencen a los 7 días. Para uso personal no hace falta verificar la app; Google muestra un aviso y se sigue por *Avanzado → Ir a…*.
 
-## Desarrollo
+### 2. Configuración
+
+Copia `.env.example` a `.env`. Lo mínimo: `BASE_URL`, las credenciales de Google, `DATABASE_URL`, `OWNER_EMAILS` y un `MASTER_KEY` (`openssl rand -base64 48`). Los avisos (`AVISOS_WEBHOOK_URL`, `AVISOS_WEBHOOK_TOKEN`) son opcionales.
+
+### 3. Desarrollo
 
 ```bash
 docker compose -f compose.dev.yml up -d   # Postgres local en el puerto 5433
 cp .env.example .env                      # y llénalo
-uv run inboxbridge                         # http://localhost:8000
+uv run inboxbridge                        # http://localhost:8000
 uv run pytest                             # 44 pruebas: unidades, herramientas MCP, avisos y flujo web
 ```
 
-## Despliegue (VPS)
+### 4. Despliegue
 
 ```bash
-cd /opt/inboxbridge-mcp && ./scripts/desplegar.sh
+./scripts/desplegar.sh
 ```
 
 El script trae la última versión, construye la imagen, levanta el contenedor detrás de Traefik y espera a que el healthcheck quede sano.
 
 La base de datos no tiene backup a propósito. Si se pierde, se reconectan las cuentas en un minuto, y no queda ninguna copia de los tokens dando vueltas.
+
+### 5. Conectarlo a Claude
+
+En claude.ai → *Configuración → Conectores → Agregar conector personalizado*, con la URL `https://tu-dominio/mcp`. Luego conecta tus cuentas de Gmail en `https://tu-dominio/cuentas`.
+
+---
+
+Hecho por [Yonier Zapata](https://github.com/devzapataa).
