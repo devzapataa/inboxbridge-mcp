@@ -116,6 +116,15 @@ def extraer_adjuntos(payload: dict[str, Any]) -> list[Adjunto]:
     ]
 
 
+def buscar_adjunto(payload: dict[str, Any], nombre: str) -> dict[str, Any] | None:
+    """La parte del mensaje con ese nombre de archivo. Se busca por nombre porque Gmail
+    no garantiza que el attachmentId sea el mismo entre dos lecturas del mensaje."""
+    for parte in _recorrer(payload):
+        if parte.get("filename") == nombre and (parte.get("body") or {}).get("attachmentId"):
+            return parte
+    return None
+
+
 def fragmento(snippet: str) -> str:
     # Gmail devuelve el snippet con entidades HTML (&#39;, &amp;...).
     return html.unescape(snippet or "")

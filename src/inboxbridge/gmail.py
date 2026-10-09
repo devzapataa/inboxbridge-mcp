@@ -5,6 +5,7 @@ memoria hasta poco antes de vencer y se renueva con un candado por cuenta.
 """
 
 import asyncio
+import base64
 import re
 import time
 from datetime import datetime
@@ -14,11 +15,12 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
+from inboxbridge import adjuntos
 from inboxbridge import mensajes as m
 from inboxbridge.cuentas import Cuenta, RepoCuentas
 from inboxbridge.errores import CuentaPorReconectar, ErrorCorreo, ErrorGoogle
 from inboxbridge.google import ClienteGoogle
-from inboxbridge.modelos import BorradorCreado, Hilo, Mensaje, ResumenHilo
+from inboxbridge.modelos import AdjuntoLeido, BorradorCreado, Hilo, Mensaje, ResumenHilo
 
 API = "https://gmail.googleapis.com/gmail/v1/users/me"
 _MARGEN_VENCIMIENTO_S = 120
@@ -37,9 +39,9 @@ def enlace_hilo(email: str, hilo_id: str) -> str:
     return f"https://mail.google.com/mail/u/{quote(email)}/#all/{hilo_id}"
 
 
-def validar_id(hilo_id: str) -> str:
+def validar_id(hilo_id: str, que: str = "hilo") -> str:
     if not _ID_GMAIL.fullmatch(hilo_id):
-        raise ErrorCorreo(f"«{hilo_id}» no es un id de hilo de Gmail válido.")
+        raise ErrorCorreo(f"«{hilo_id}» no es un id de {que} de Gmail válido.")
     return hilo_id
 
 
@@ -89,6 +91,30 @@ class Gmail:
             enlace=enlace_hilo(cuenta.email, hilo_id),
             mensajes=mensajes,
             mensajes_omitidos=len(todos) - len(recientes),
+        )
+
+    async def leer_adjunto(self, cuenta: Cuenta, mensaje_id: str, nombre: str) -> AdjuntoLeido:
+        validar_id(mensaje_id, "mensaje")
+        msg = await self._pedir(cuenta, "GET", f"/messages/{mensaje_id}", params={"format": "full"})
+        parte = m.buscar_adjunto(msg.get("payload", {}), nombre)
+        if parte is None:
+            raise ErrorCorreo(f"Ese mensaje no tiene un adjunto llamado «{nombre}».")
+        if int(parte["body"].get("size", 0)) > adjuntos.MAX_BYTES:
+            raise ErrorCorreo(f"«{nombre}» pesa más de 10 MB; no lo leo.")
+        adjunto_id = quote(parte["body"]["attachmentId"], safe="")
+        datos = await self._pedir(cuenta, "GET", f"/messages/{mensaje_id}/attachments/{adjunto_id}")
+        crudo = base64.urlsafe_b64decode(datos["data"] + "=" * (-len(datos["data"]) % 4))
+        tipo = parte.get("mimeType", "application/octet-stream")
+        texto, paginas = await asyncio.to_thread(adjuntos.extraer_texto, crudo, tipo, nombre)
+        await self._cuentas.marcar_uso(cuenta.id)
+        return AdjuntoLeido(
+            cuenta=cuenta.alias,
+            mensaje_id=mensaje_id,
+            nombre=nombre,
+            tipo=tipo,
+            paginas=paginas,
+            texto=texto[: adjuntos.MAX_CARACTERES],
+            truncado=len(texto) > adjuntos.MAX_CARACTERES,
         )
 
     async def crear_borrador(

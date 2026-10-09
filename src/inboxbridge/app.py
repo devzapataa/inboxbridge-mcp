@@ -9,6 +9,7 @@ from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 
+from inboxbridge.api import registrar_api
 from inboxbridge.auditoria import Auditoria
 from inboxbridge.auth import crear_auth
 from inboxbridge.config import Settings
@@ -48,6 +49,7 @@ def crear_servidor(settings: Settings) -> FastMCP:
     )
     registrar_herramientas(mcp, estado)
     registrar_rutas(mcp, estado)
+    registrar_api(mcp, estado)
     return mcp
 
 

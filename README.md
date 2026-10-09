@@ -28,8 +28,17 @@ Y sin que tengas que preguntar, dos [rutinas programadas de Claude](https://clau
 
 | Hora | Qué hace | Te avisa |
 |---|---|---|
-| **7:00 am** | Revisa todas las cuentas y busca plazos de los últimos 21 días (pruebas técnicas, entrevistas, citaciones, pagos), aunque esos correos ya estén leídos. | Siempre, por push y por WhatsApp. Así sabes que la revisión corrió. |
+| **7:00 am** | Revisa todas las cuentas y busca plazos de los últimos 21 días (pruebas técnicas, entrevistas, citaciones, pagos). Lo que ya leíste solo vuelve si su plazo está encima. | Siempre, por push y por WhatsApp. Así sabes que la revisión corrió. |
 | **2:00 pm** | Una pasada corta: solo lo que vence hoy o mañana y sigue sin atender. | Solo si hay algo urgente. |
+| **Domingo 6 pm** | Tablero de tus procesos de empleo: postulado, prueba pendiente, prueba enviada, esperando respuesta, descartado. | Siempre. |
+
+Además, las rutinas:
+
+- **Recuerdan lo que ya te dijeron.** Cada plazo queda como un seguimiento con número (#12), y lo que marcas como hecho no se vuelve a mencionar.
+- **Ponen el plazo en tu calendario**, con alarma, y **te dejan el borrador** de los seguimientos que te toca enviar (nunca los envían).
+- **Leen los PDF adjuntos** cuando el dato está en el documento y no en el correo.
+- **Te dejan responder por WhatsApp:** *hecho 12*, *descartar 12*, *posponer 12 lunes* o *lista*.
+- **Avisan si fallan:** si a las 7:40 am no salió el resumen, llega una alerta por Telegram.
 
 ## Cómo funciona
 
@@ -40,6 +49,8 @@ flowchart LR
     S --- P[("PostgreSQL<br/>cuentas · auditoría · estado OAuth")]
     S -- "enviar_aviso<br/>webhook fijo" --> N["n8n"]
     N --> W["WhatsApp<br/>(Evolution API)"]
+    W -. "tus comandos<br/>hecho 12 · posponer" .-> N
+    N -. "/api/comandos<br/>(token)" .-> S
 ```
 
 Hay dos capas de OAuth:
@@ -57,7 +68,11 @@ Hay dos capas de OAuth:
 | `buscar_correos` | Busca con la sintaxis de Gmail en una cuenta o en todas en paralelo, y ordena por fecha. Si una cuenta falla, las demás responden igual. |
 | `leer_hilo` | Hilo completo en texto (convierte el HTML), con remitentes, fechas y adjuntos. |
 | `crear_borrador` | Borrador nuevo o respuesta dentro de un hilo (`In-Reply-To` / `References`). Nunca envía. |
+| `leer_adjunto` | Texto de un adjunto PDF o de texto (máximo 10 MB y 40 páginas). Los PDF con contraseña dan un error claro. |
 | `conectar_cuenta` | Enlace para conectar otra cuenta o reconectar una revocada. |
+| `listar_seguimientos` | La memoria de las rutinas: plazos y procesos vigilados, con su número, estado y fecha. |
+| `registrar_seguimiento` | Guarda un plazo o proceso. Si ya existía, actualiza los datos sin reabrir lo que estaba hecho. |
+| `actualizar_seguimiento` | Lo marca como avisado, hecho, descartado o vencido, lo pospone, o guarda el id del evento de calendario o del borrador para no repetirlos. |
 | `enviar_aviso` | Aviso al dueño por un canal fijo (por ejemplo, WhatsApp vía n8n). Solo existe si hay `AVISOS_WEBHOOK_URL`. |
 
 ## Decisiones de seguridad
@@ -66,6 +81,7 @@ Un servidor con acceso a varios buzones es un blanco atractivo, y los correos lo
 
 - **No hay herramientas para enviar, reenviar ni borrar.** Un correo malicioso puede intentar que el modelo saque datos (prompt injection). Con solo borradores, quien envía siempre es una persona desde Gmail. Una prueba lo verifica.
 - **La única salida, `enviar_aviso`, solo puede escribirle al dueño.** Claude decide el texto, pero no el destino: la URL del webhook está en el `.env` y el destinatario lo fija el workflow que la recibe. Además tiene un límite diario (`AVISOS_MAX_DIARIOS`) y quita los caracteres de control. Por eso las rutinas no necesitan acceso a n8n: si lo tuvieran, un correo podría pedirles ejecutar cualquier otro workflow.
+- **Los comandos por WhatsApp solo tocan la memoria de seguimientos, nunca el correo.** Llegan por `/api/comandos`, que exige un token (`API_TOKEN`), y n8n solo reenvía los mensajes que vienen de tu número. En el peor caso, alguien marcaría un recordatorio como hecho.
 - **Tokens cifrados con AES-256-GCM, con el email de la cuenta como dato asociado:** un token no se descifra si lo mueven a otra fila. Las llaves se derivan con HKDF desde un único `MASTER_KEY` (una por propósito).
 - **Lista cerrada de dueños** en las dos capas de OAuth, aunque Google valide a cualquiera.
 - **URLs de regreso permitidas:** solo las de claude.ai y loopback (Claude Code). Los trucos tipo `localhost@evil.com` se rechazan.
@@ -76,7 +92,7 @@ Un servidor con acceso a varios buzones es un blanco atractivo, y los correos lo
 
 ## Stack
 
-Python 3.14 · FastMCP 4 · Starlette · asyncpg · httpx · Pydantic · cryptography · uv · pytest + respx · ruff · pyright · Docker · Traefik · GitHub Actions
+Python 3.14 · FastMCP 4 · Starlette · asyncpg · httpx · Pydantic · cryptography · pypdf · uv · pytest + respx · ruff · pyright · Docker · Traefik · GitHub Actions
 
 ## Puesta en marcha
 
@@ -90,7 +106,7 @@ Python 3.14 · FastMCP 4 · Starlette · asyncpg · httpx · Pydantic · cryptog
 
 ### 2. Configuración
 
-Copia `.env.example` a `.env`. Lo mínimo: `BASE_URL`, las credenciales de Google, `DATABASE_URL`, `OWNER_EMAILS` y un `MASTER_KEY` (`openssl rand -base64 48`). Los avisos (`AVISOS_WEBHOOK_URL`, `AVISOS_WEBHOOK_TOKEN`) son opcionales.
+Copia `.env.example` a `.env`. Lo mínimo: `BASE_URL`, las credenciales de Google, `DATABASE_URL`, `OWNER_EMAILS` y un `MASTER_KEY` (`openssl rand -base64 48`). Los avisos (`AVISOS_WEBHOOK_URL`, `AVISOS_WEBHOOK_TOKEN`) y la API para n8n (`API_TOKEN`) son opcionales.
 
 ### 3. Desarrollo
 
@@ -98,7 +114,7 @@ Copia `.env.example` a `.env`. Lo mínimo: `BASE_URL`, las credenciales de Googl
 docker compose -f compose.dev.yml up -d   # Postgres local en el puerto 5433
 cp .env.example .env                      # y llénalo
 uv run inboxbridge                        # http://localhost:8000
-uv run pytest                             # 44 pruebas: unidades, herramientas MCP, avisos y flujo web
+uv run pytest                             # 75 pruebas: herramientas MCP, seguimientos, comandos, adjuntos, avisos y flujo web
 ```
 
 ### 4. Despliegue

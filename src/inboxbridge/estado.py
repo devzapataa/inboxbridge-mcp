@@ -12,6 +12,7 @@ from inboxbridge.cuentas import RepoCuentas
 from inboxbridge.db import crear_pool, migrar
 from inboxbridge.gmail import Gmail
 from inboxbridge.google import ClienteGoogle
+from inboxbridge.seguimientos import RepoSeguimientos
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class Estado:
     cuentas: RepoCuentas
     google: ClienteGoogle
     gmail: Gmail
+    seguimientos: RepoSeguimientos
     avisador: Avisador | None = None
 
     def __init__(self, settings: Settings) -> None:
@@ -43,6 +45,7 @@ class Estado:
             redirect_uri=s.google_redirect_uri,
         )
         self.gmail = Gmail(self.http, self.google, self.cuentas, s.zona_horaria)
+        self.seguimientos = RepoSeguimientos(self.pool, s.zona_horaria)
         if s.avisos_webhook_url and s.avisos_webhook_token:
             cuentas = self.cuentas
             self.avisador = Avisador(

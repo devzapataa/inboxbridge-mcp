@@ -106,6 +106,12 @@ class RepoCuentas:
         cuenta = Cuenta(**datos)
         return cuenta, self._cifrador.descifrar(blob, cuenta.email)
 
+    async def ultima_llamada_ok(self, herramienta: str) -> datetime | None:
+        return await self._pool.fetchval(
+            "SELECT max(momento) FROM auditoria WHERE herramienta = $1 AND resultado = 'ok'",
+            herramienta,
+        )
+
     async def contar_llamadas_ok(self, herramienta: str, horas: int) -> int:
         return await self._pool.fetchval(
             "SELECT count(*) FROM auditoria WHERE herramienta = $1 AND resultado = 'ok'"

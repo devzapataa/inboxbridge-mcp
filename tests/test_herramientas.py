@@ -192,8 +192,12 @@ async def test_no_hay_herramientas_para_enviar_ni_borrar(mcp_cliente: Client) ->
         "listar_cuentas",
         "buscar_correos",
         "leer_hilo",
+        "leer_adjunto",
         "crear_borrador",
         "conectar_cuenta",
+        "listar_seguimientos",
+        "registrar_seguimiento",
+        "actualizar_seguimiento",
     }
 
 

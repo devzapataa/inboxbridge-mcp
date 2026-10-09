@@ -63,6 +63,9 @@ class GoogleFalso:
         self.codigos: dict[str, dict[str, Any]] = {}
         self.usuarios: dict[str, dict[str, Any]] = {}
         self.borradores: list[dict[str, Any]] = []
+        # mensaje_id -> mensaje (formato full) y attachmentId -> bytes del adjunto
+        self.mensajes: dict[str, dict[str, Any]] = {}
+        self.adjuntos: dict[str, bytes] = {}
         self.revocaciones: list[str] = []
         self.refrescos = 0
 
@@ -73,6 +76,11 @@ class GoogleFalso:
         router.get(f"{API}/threads").mock(side_effect=self._listar_hilos)
         router.get(url__regex=rf"{API}/threads/(?P<hilo>[^/?]+)").mock(side_effect=self._hilo)
         router.post(f"{API}/drafts").mock(side_effect=self._borrador)
+        # El de adjuntos va primero: respx usa la primera ruta que coincide.
+        router.get(url__regex=rf"{API}/messages/(?P<msg>[^/?]+)/attachments/(?P<adj>[^/?]+)").mock(
+            side_effect=self._adjunto
+        )
+        router.get(url__regex=rf"{API}/messages/(?P<msg>[^/?]+)").mock(side_effect=self._mensaje)
 
     def _token(self, request: httpx.Request) -> httpx.Response:
         datos = {k: v[0] for k, v in parse_qs(request.content.decode()).items()}
@@ -119,6 +127,21 @@ class GoogleFalso:
         if hilo not in buzon:
             return httpx.Response(404)
         return httpx.Response(200, json={"id": hilo, "messages": buzon[hilo]})
+
+    def _mensaje(self, request: httpx.Request, msg: str) -> httpx.Response:
+        if self._buzon(request) is None:
+            return httpx.Response(401)
+        if msg not in self.mensajes:
+            return httpx.Response(404)
+        return httpx.Response(200, json=self.mensajes[msg])
+
+    def _adjunto(self, request: httpx.Request, msg: str, adj: str) -> httpx.Response:
+        if self._buzon(request) is None:
+            return httpx.Response(401)
+        if adj not in self.adjuntos:
+            return httpx.Response(404)
+        datos = base64.urlsafe_b64encode(self.adjuntos[adj]).decode().rstrip("=")
+        return httpx.Response(200, json={"data": datos, "size": len(self.adjuntos[adj])})
 
     def _borrador(self, request: httpx.Request) -> httpx.Response:
         cuerpo = json.loads(request.content)

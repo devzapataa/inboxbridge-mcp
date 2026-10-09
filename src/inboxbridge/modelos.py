@@ -1,6 +1,6 @@
 """Lo que devuelven las herramientas. FastMCP genera el output schema a partir de estos modelos."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -74,3 +74,39 @@ class BorradorCreado(BaseModel):
     para: str
     asunto: str
     enlace: str
+
+
+class AdjuntoLeido(BaseModel):
+    cuenta: str
+    mensaje_id: str
+    nombre: str
+    tipo: str
+    paginas: int | None
+    texto: str
+    truncado: bool
+
+
+class SeguimientoInfo(BaseModel):
+    numero: int
+    cuenta: str
+    hilo_id: str
+    titulo: str
+    tipo: str
+    estado: str
+    vence_en: datetime | None
+    proximo_paso: str | None
+    recordar_desde: date | None
+    evento_id: str | None
+    borrador_id: str | None
+    nota: str | None
+    enlace: str
+
+
+class SeguimientoRegistrado(BaseModel):
+    seguimiento: SeguimientoInfo
+    nuevo: bool
+
+
+class ListaSeguimientos(BaseModel):
+    hoy: date
+    seguimientos: list[SeguimientoInfo]

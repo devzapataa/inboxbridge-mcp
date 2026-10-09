@@ -65,7 +65,7 @@ def db_limpia(base_de_datos: str) -> str:
     async def vaciar() -> None:
         con = await asyncpg.connect(base_de_datos)
         try:
-            await con.execute("TRUNCATE cuentas, auditoria RESTART IDENTITY")
+            await con.execute("TRUNCATE cuentas, auditoria, seguimientos RESTART IDENTITY")
         finally:
             await con.close()
 

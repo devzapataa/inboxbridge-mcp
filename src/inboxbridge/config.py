@@ -25,13 +25,15 @@ class Settings(BaseSettings):
     avisos_webhook_url: str | None = None
     avisos_webhook_token: SecretStr | None = None
     avisos_max_diarios: int = Field(default=12, ge=1, le=100)
+    # Token de /api/* (n8n: alarma de la rutina y comandos por WhatsApp). Sin él, /api no existe.
+    api_token: SecretStr | None = Field(default=None, min_length=32)
 
     @field_validator("base_url")
     @classmethod
     def _sin_barra_final(cls, valor: str) -> str:
         return valor.rstrip("/")
 
-    @field_validator("avisos_webhook_url", "avisos_webhook_token", mode="before")
+    @field_validator("avisos_webhook_url", "avisos_webhook_token", "api_token", mode="before")
     @classmethod
     def _vacio_es_none(cls, valor: object) -> object:
         return None if valor == "" else valor
